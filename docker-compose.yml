@@ -1,0 +1,75 @@
+services:
+  # 1. SSL & Nginx Proxy (SWAG)
+  swag:
+    image: lscr.io/linuxserver/swag:latest
+    container_name: swag
+    cap_add:
+      - NET_ADMIN
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${SWAG_TIMEZONE}
+      - URL=${PRIMARY_DOMAIN}  
+      - SUBDOMAINS=${SWAG_SUBDOMAINS}
+      - VALIDATION=${SWAG_VALIDATION}
+      - DNSPLUGIN=${SWAG_DNSPLUGIN}           
+      - EMAIL=${SWAG_EMAIL}
+    volumes:
+      - ./config/swag/nginx/templates/nextcloud.conf.template:/config/nginx/templates/nextcloud.conf.template:ro
+      - ./config/swag/nginx/site-confs:/config/nginx/site-confs
+    ports:
+      - 443:443
+    restart: unless-stopped
+
+  # 2. Nextcloud Application (PHP-FPM)
+  app:
+    image: nextcloud:fpm-alpine
+    container_name: nextcloud-app
+    restart: unless-stopped
+    expose:
+      - "9000"
+    environment:
+      # Database Auto-Config
+      - POSTGRES_HOST=${NEXTCLOUD_DB_HOST}
+      - POSTGRES_DB=${NEXTCLOUD_DB}
+      - POSTGRES_USER=${NEXTCLOUD_DB_USER}
+      - POSTGRES_PASSWORD=${NEXTCLOUD_DB_PASSWORD}
+      # Nextcloud Initialization
+      - NEXTCLOUD_ADMIN_USER=${NEXTCLOUD_ADMIN_USER}
+      - NEXTCLOUD_ADMIN_PASSWORD=${NEXTCLOUD_ADMIN_PASSWORD}
+      # Redis Cache Config
+      - REDIS_HOST=${NEXTCLOUD_REDIS_HOST}
+      - REDIS_HOST_PASSWORD=${NEXTCLOUD_REDIS_PASSWORD}
+      # Proxy & Domain Settings
+      - TRUSTED_DOMAINS=${NEXTCLOUD_TRUSTED_DOMAINS}
+      - TRUSTED_PROXIES=${NEXTCLOUD_TRUSTED_PROXIES}
+      - OVERWRITEPROTOCOL=${NEXTCLOUD_OVERWRITEPROTOCOL}
+      - OVERWRITECLIURL=https://${PRIMARY_DOMAIN}
+    volumes:
+      - ./config/nextcloud:/var/www/html
+    depends_on:
+      - db
+      - redis
+
+  # 3. Database (PostgreSQL)
+  db:
+    image: postgres:16-alpine
+    container_name: nextcloud-db
+    restart: unless-stopped
+    expose:
+      - "5432"
+    environment:
+      - POSTGRES_DB=${NEXTCLOUD_DB}
+      - POSTGRES_USER=${NEXTCLOUD_DB_USER}
+      - POSTGRES_PASSWORD=${NEXTCLOUD_DB_PASSWORD}
+    volumes:
+      - ./db-data:/var/lib/postgresql/data
+
+  # 4. Cache (Redis)
+  redis:
+    image: redis:alpine
+    container_name: nextcloud-redis
+    command: ["redis-server", "--requirepass", "${NEXTCLOUD_REDIS_PASSWORD}"]
+    restart: unless-stopped
+    expose:
+      - "6379"
