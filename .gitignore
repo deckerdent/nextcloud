@@ -3,3 +3,16 @@
 
 # But do not ignore the example template
 !.env.example
+
+# Keep the directory trees but ignore all files/dirs inside them
+/config/nextcloud/*
+!/config/nextcloud/.gitkeep
+
+/config/swag/config/*
+!/config/swag/config/.gitkeep
+
+/nextcloud-data/*
+!/nextcloud-data/.gitkeep
+
+/db-data/*
+!/db-data/.gitkeep
