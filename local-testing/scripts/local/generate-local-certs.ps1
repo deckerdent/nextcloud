@@ -107,8 +107,9 @@ function New-FullChainAndKey {
 
 # Initialize script-global bash path and validate
 $scriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
-$repoRootPath = (Resolve-Path -Path (Join-Path $scriptDir '..\..') -ErrorAction Stop).Path
-$script:outPath = Join-Path $repoRootPath 'config\swag\config\etc\letsencrypt\live\localhost'
+# Script is at local-testing/scripts/local/ — three levels up reaches the repo root
+$repoRootPath = (Resolve-Path -Path (Join-Path $scriptDir '..\..\..') -ErrorAction Stop).Path
+$script:outPath = Join-Path $repoRootPath 'deployment\config\swag\config\etc\letsencrypt\live\localhost'
 Debug-Log "Resolved scriptDir: $scriptDir, repoRoot: $repoRootPath, outPath: $script:outPath"
 $script:bash = Get-GitBash
 if (-not $script:bash) {

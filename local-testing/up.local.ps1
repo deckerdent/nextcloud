@@ -10,9 +10,12 @@ if (-not $ScriptDir -or $ScriptDir -eq '') {
     $ScriptDir = Split-Path -Path $MyInvocation.MyCommand.Definition -Parent
 }
 
+# Repo root is one level up from $ScriptDir (local-testing/)
+$repoRoot = (Resolve-Path -Path (Join-Path $ScriptDir '..') -ErrorAction Stop).Path
+
 # Ensure proxy conf and local certs exist; generate if missing
 try {
-    $proxyConf = Join-Path $ScriptDir 'config\swag\config\nginx\proxy-confs\nextcloud.subdomain.conf'
+    $proxyConf = Join-Path $repoRoot 'deployment\config\swag\config\nginx\proxy-confs\nextcloud.subdomain.conf'
     if (-not (Test-Path $proxyConf)) {
         Write-Host "Proxy config not found: $proxyConf -- generating with script"
         $genProxy = Join-Path $ScriptDir 'scripts\local\generate-local-nextcloud-subdomain-conf.ps1'
@@ -27,7 +30,7 @@ try {
         }
     }
 
-    $certsDir = Join-Path $ScriptDir 'config\swag\config\etc\letsencrypt\live\localhost'
+    $certsDir = Join-Path $repoRoot 'deployment\config\swag\config\etc\letsencrypt\live\localhost'
     if (-not (Test-Path $certsDir)) {
         Write-Host "Local certs not found: $certsDir -- generating with script"
         $genCerts = Join-Path $ScriptDir 'scripts\local\generate-local-certs.ps1'
@@ -47,7 +50,7 @@ catch {
 }
 
 $EnvPath = Join-Path -Path $ScriptDir -ChildPath ".env.local"
-$ComposePath = Join-Path -Path $ScriptDir -ChildPath "docker-compose.yml"
+$ComposePath = Join-Path -Path $repoRoot -ChildPath "deployment\docker-compose.yml"
 
 $rs = ''
 

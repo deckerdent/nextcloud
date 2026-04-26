@@ -4,15 +4,23 @@
 # But do not ignore the example template
 !.env.example
 
-# Keep the directory trees but ignore all files/dirs inside them
-/config/nextcloud/*
-!/config/nextcloud/.gitkeep
+# Keep directory trees but ignore generated/runtime files
 
-/config/swag/config/*
-!/config/swag/config/.gitkeep
+# Nextcloud config (runtime, not committed)
+/deployment/config/nextcloud/*
+!/deployment/config/nextcloud/.gitkeep
 
-/nextcloud-data/*
-!/nextcloud-data/.gitkeep
+# SWAG config (runtime, not committed)
+/deployment/config/swag/config/*
+!/deployment/config/swag/config/.gitkeep
 
-/db-data/*
-!/db-data/.gitkeep
+# SWAG generated certs (never commit private keys)
+/deployment/config/swag/config/etc/
+
+# Nextcloud data volume
+/deployment/nextcloud-data/*
+!/deployment/nextcloud-data/.gitkeep
+
+# Database volume
+/deployment/db-data/*
+!/deployment/db-data/.gitkeep

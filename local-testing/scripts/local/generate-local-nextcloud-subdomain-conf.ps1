@@ -60,15 +60,15 @@ function Copy-ProxyTemplate {
 # Main
 try {
     $TemplateRelativePath = 'templates/nextcloud.subdomain.conf'
-    $DestRelativePath = 'config/swag/config/nginx/proxy-confs/nextcloud.subdomain.conf'
+    $DestRelativePath = 'deployment/config/swag/config/nginx/proxy-confs/nextcloud.subdomain.conf'
     Debug-Log "TemplateRelativePath: $TemplateRelativePath"
     Debug-Log "DestRelativePath: $DestRelativePath"
 
     $scriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
     $absTemplate = Join-Path $scriptDir $TemplateRelativePath
 
-    # repo root is two directories up from the script directory
-    $repoRoot = (Resolve-Path -Path (Join-Path $scriptDir '..\..') -ErrorAction Stop).Path
+    # Script is at local-testing/scripts/local/ — three levels up reaches the repo root
+    $repoRoot = (Resolve-Path -Path (Join-Path $scriptDir '..\..\..'  ) -ErrorAction Stop).Path
     $absDest = Join-Path $repoRoot $DestRelativePath
 
     Debug-Log "Absolute template path: $absTemplate"
