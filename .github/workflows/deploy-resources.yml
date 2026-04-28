@@ -79,13 +79,11 @@ jobs:
         id: generate_ssh
         run: |
           ssh-keygen -t rsa -b 2048 -f ssh_key -N ""
-          # Use multiline file command syntax to safely set outputs that contain newlines
-          echo "sshKeyDataPrivate<<EOF" >> $GITHUB_OUTPUT
-          cat ssh_key >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-          echo "sshKeyDataPublic<<EOF" >> $GITHUB_OUTPUT
-          cat ssh_key.pub >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          # Base64-encode keys to produce single-line outputs safe for passing
+          base64 -w0 ssh_key > ssh_key.b64
+          base64 -w0 ssh_key.pub > ssh_key_pub.b64
+          echo "sshKeyDataPrivateB64=$(cat ssh_key.b64)" >> $GITHUB_OUTPUT
+          echo "sshKeyDataPublicB64=$(cat ssh_key_pub.b64)" >> $GITHUB_OUTPUT
 
       - name: Generate Random Passwords
         id: generate_passwords
@@ -101,8 +99,11 @@ jobs:
         run: |
           cd cloud-init
           chmod +x deploy.sh
-          SSH_PRIVATE="${{ steps.generate_ssh.outputs.sshKeyDataPrivate }}"
-          SSH_PUBLIC="${{ steps.generate_ssh.outputs.sshKeyDataPublic }}"
+          SSH_PRIVATE_B64="${{ steps.generate_ssh.outputs.sshKeyDataPrivateB64 }}"
+          SSH_PUBLIC_B64="${{ steps.generate_ssh.outputs.sshKeyDataPublicB64 }}"
+          # decode base64 into variables preserving newlines for the script
+          SSH_PRIVATE=$(printf '%s' "$SSH_PRIVATE_B64" | base64 --decode)
+          SSH_PUBLIC=$(printf '%s' "$SSH_PUBLIC_B64" | base64 --decode)
           DB_PW="${{ steps.generate_passwords.outputs.dbPassword }}"
           ADMIN_PW="${{ steps.generate_passwords.outputs.adminPassword }}"
           REDIS_PW="${{ steps.generate_passwords.outputs.redisPassword }}"
