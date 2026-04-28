@@ -80,10 +80,10 @@ jobs:
         run: |
           ssh-keygen -t rsa -b 2048 -f ssh_key -N ""
           # Use multiline file command syntax to safely set outputs that contain newlines
-          echo "sshKeyDataPrivate<<'EOF'" >> $GITHUB_OUTPUT
+          echo "sshKeyDataPrivate<<EOF" >> $GITHUB_OUTPUT
           cat ssh_key >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
-          echo "sshKeyDataPublic<<'EOF'" >> $GITHUB_OUTPUT
+          echo "sshKeyDataPublic<<EOF" >> $GITHUB_OUTPUT
           cat ssh_key.pub >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
