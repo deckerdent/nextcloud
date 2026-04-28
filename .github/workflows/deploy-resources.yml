@@ -14,6 +14,7 @@ permissions:
 
 jobs:
   deploy:
+    if: ${{ github.event_name == 'workflow_dispatch' }} # Safeguard to ensure this job only runs on manual trigger
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
