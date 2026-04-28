@@ -101,4 +101,20 @@ jobs:
         run: |
           cd cloud-init
           chmod +x deploy.sh
-          ./deploy.sh --location ${{ github.event.inputs.location }} --client-id ${{ steps.create_app.outputs.appId }} --client-secret ${{ steps.create_secret.outputs.clientSecret }} --ssh-private ${{ steps.generate_ssh.outputs.sshKeyDataPrivate }} --ssh-public ${{ steps.generate_ssh.outputs.sshKeyDataPublic }} --db-password ${{ steps.generate_passwords.outputs.dbPassword }} --admin-password ${{ steps.generate_passwords.outputs.adminPassword }} --redis-password ${{ steps.generate_passwords.outputs.redisPassword }}
+          SSH_PRIVATE="${{ steps.generate_ssh.outputs.sshKeyDataPrivate }}"
+          SSH_PUBLIC="${{ steps.generate_ssh.outputs.sshKeyDataPublic }}"
+          DB_PW="${{ steps.generate_passwords.outputs.dbPassword }}"
+          ADMIN_PW="${{ steps.generate_passwords.outputs.adminPassword }}"
+          REDIS_PW="${{ steps.generate_passwords.outputs.redisPassword }}"
+          CLIENT_ID="${{ steps.create_app.outputs.appId }}"
+          CLIENT_SECRET="${{ steps.create_secret.outputs.clientSecret }}"
+
+          ./deploy.sh \
+            --location "${{ github.event.inputs.location }}" \
+            --client-id "$CLIENT_ID" \
+            --client-secret "$CLIENT_SECRET" \
+            --ssh-private "$SSH_PRIVATE" \
+            --ssh-public "$SSH_PUBLIC" \
+            --db-password "$DB_PW" \
+            --admin-password "$ADMIN_PW" \
+            --redis-password "$REDIS_PW"
