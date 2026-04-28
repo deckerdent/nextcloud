@@ -7,6 +7,10 @@ on:
           eastus, westeurope)"
         required: false
         default: "germanywestcentral"
+      environment:
+        description: "Deployment environment that defines your secrets (e.g. prod, staging)"
+        required: false
+        default: "prod"
 
 permissions:
   contents: read
@@ -16,6 +20,7 @@ jobs:
   deploy:
     if: ${{ github.event_name == 'workflow_dispatch' }} # Safeguard to ensure this job only runs on manual trigger
     runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
