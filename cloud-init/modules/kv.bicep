@@ -13,6 +13,11 @@ param adminPassword string
 @secure()
 param redisPassword string
 
+@secure()
+param nextcloudClientId string
+@secure()
+param nextcloudClientSecret string
+
 var secretContentType = 'text/plain'
 
 resource kvnextcloud 'Microsoft.KeyVault/vaults@2025-05-01' = {
@@ -97,6 +102,24 @@ resource redisUsernameNextcloud 'Microsoft.KeyVault/vaults/secrets@2025-05-01' =
   properties: {
     contentType: secretContentType
     value: 'nextcloud'
+  }
+}
+
+resource clientSecretNextcloud 'Microsoft.KeyVault/vaults/secrets@2025-05-01' = {
+  parent: kvnextcloud
+  name: 'nextcloud-client-secret'
+  properties: {
+    contentType: secretContentType
+    value: nextcloudClientSecret
+  }
+}
+
+resource clientIdNextcloud 'Microsoft.KeyVault/vaults/secrets@2025-05-01' = {
+  parent: kvnextcloud
+  name: 'nextcloud-client-id'
+  properties: {
+    contentType: secretContentType
+    value: nextcloudClientId
   }
 }
 

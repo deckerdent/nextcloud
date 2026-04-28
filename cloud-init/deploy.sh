@@ -10,12 +10,29 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEBUG=0
 TEST=0
 LOCATION=""
+CLIENT_ID=""
+CLIENT_SECRET=""
+NEXTCLOUD_ADMIN_PASSWORD=""
+NEXTCLOUD_DB_PASSWORD=""
+NEXTCLOUD_REDIS_PASSWORD=""
+SSH_PRIVATE_KEY=""
+SSH_PUBLIC_KEY=""
 
 usage() {
 	cat <<USAGE
-Usage: $(basename "$0") [--debug] [--test]
-	--debug   Print generated passwords and SSH keys (private/public)
-	--test    Run az deployment as a what-if (dry-run) instead of creating
+Usage: $(basename "$0") [--debug] [--test] --client-id <id> --client-secret <secret> \
+	   --admin-password <pw> --db-password <pw> --redis-password <pw> \
+	   --ssh-private '<private-key>' --ssh-public '<public-key>' [--location <region>]
+	--debug            Print provided passwords and SSH keys (use with caution)
+	--test             Run az deployment as a what-if (dry-run) instead of creating
+	--client-id        (required) Client id to pass as inline parameter
+	--client-secret    (required) Client secret to pass as inline parameter
+	--admin-password   (required) Nextcloud admin password
+	--db-password      (required) Database password
+	--redis-password   (required) Redis password
+	--ssh-private      (required) SSH private key (PEM or OpenSSH format)
+	--ssh-public       (required) SSH public key (authorized_keys format)
+	--location|-l      (optional) Azure location, default germanywestcentral
 USAGE
 	exit 1
 }
@@ -32,39 +49,82 @@ while [[ ${#} -gt 0 ]]; do
 				echo "--location requires an argument" >&2; exit 1
 			fi
 			;;
+		--client-id)
+			if [[ -n ${2-} && ${2:0:1} != '-' ]]; then
+				CLIENT_ID=$2; shift 2
+			else
+				echo "--client-id requires an argument" >&2; exit 1
+			fi
+			;;
+		--client-secret)
+			if [[ -n ${2-} && ${2:0:1} != '-' ]]; then
+				CLIENT_SECRET=$2; shift 2
+			else
+				echo "--client-secret requires an argument" >&2; exit 1
+			fi
+			;;
+		--admin-password)
+			if [[ -n ${2-} && ${2:0:1} != '-' ]]; then
+				NEXTCLOUD_ADMIN_PASSWORD=$2; shift 2
+			else
+				echo "--admin-password requires an argument" >&2; exit 1
+			fi
+			;;
+		--db-password)
+			if [[ -n ${2-} && ${2:0:1} != '-' ]]; then
+				NEXTCLOUD_DB_PASSWORD=$2; shift 2
+			else
+				echo "--db-password requires an argument" >&2; exit 1
+			fi
+			;;
+		--redis-password)
+			if [[ -n ${2-} && ${2:0:1} != '-' ]]; then
+				NEXTCLOUD_REDIS_PASSWORD=$2; shift 2
+			else
+				echo "--redis-password requires an argument" >&2; exit 1
+			fi
+			;;
+		--ssh-private)
+			if [[ -n ${2-} && ${2:0:1} != '-' ]]; then
+				SSH_PRIVATE_KEY=$2; shift 2
+			else
+				echo "--ssh-private requires an argument" >&2; exit 1
+			fi
+			;;
+		--ssh-public)
+			if [[ -n ${2-} && ${2:0:1} != '-' ]]; then
+				SSH_PUBLIC_KEY=$2; shift 2
+			else
+				echo "--ssh-public requires an argument" >&2; exit 1
+			fi
+			;;
 		--) shift; break ;;
 		*) echo "Unknown option: $1" >&2; usage ;;
 	esac
-done
+	done
 
-# shellcheck source=/dev/null
-source "${SCRIPT_DIR}/scripts/generateSSHKey.sh"
-# source password generator
-source "${SCRIPT_DIR}/scripts/generatePassword.sh"
-
-# Call the function and capture JSON output
-key_json=$(generate_ssh_key)
-# Extract base64 fields (uses `jq` if available, falls back to sed)
-if command -v jq >/dev/null 2>&1; then
-	private_b64=$(printf '%s' "$key_json" | jq -r '.privateKey')
-	public_b64=$(printf '%s' "$key_json" | jq -r '.publicKey')
-else
-	private_b64=$(printf '%s' "$key_json" | sed -n 's/.*"privateKey"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
-	public_b64=$(printf '%s' "$key_json" | sed -n 's/.*"publicKey"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+# enforce mandatory client id/secret and provided secrets
+if [[ -z "$CLIENT_ID" || -z "$CLIENT_SECRET" ]]; then
+	echo "Error: --client-id and --client-secret are required" >&2
+	usage
 fi
 
-# Decode and print raw keys to stdout (do not write files)
-private_key=$(printf '%s' "$private_b64" | base64 --decode)
-public_key=$(printf '%s' "$public_b64" | base64 --decode)
+# enforce provided passwords and ssh keys
+if [[ -z "$NEXTCLOUD_ADMIN_PASSWORD" || -z "$NEXTCLOUD_DB_PASSWORD" || -z "$NEXTCLOUD_REDIS_PASSWORD" || -z "$SSH_PRIVATE_KEY" || -z "$SSH_PUBLIC_KEY" ]]; then
+	echo "Error: --admin-password, --db-password, --redis-password, --ssh-private, and --ssh-public are required" >&2
+	usage
+fi
 
-# generate passwords
-nextcloud_admin_password=$(generate_password 32)
-nextcloud_db_password=$(generate_password 32)
-nextcloud_redis_password=$(generate_password 32)
+# use provided secrets
+nextcloud_admin_password="$NEXTCLOUD_ADMIN_PASSWORD"
+nextcloud_db_password="$NEXTCLOUD_DB_PASSWORD"
+nextcloud_redis_password="$NEXTCLOUD_REDIS_PASSWORD"
+private_key="$SSH_PRIVATE_KEY"
+public_key="$SSH_PUBLIC_KEY"
 
 if [[ "$DEBUG" -eq 1 ]]; then
 	cat <<EOF
-DEBUG OUTPUT
+DEBUG OUTPUT (provided values)
 ----------------
 nextcloud_admin_password: $nextcloud_admin_password
 nextcloud_db_password: $nextcloud_db_password
@@ -75,6 +135,9 @@ $private_key
 
 SSH PUBLIC KEY:
 $public_key
+
+Client ID: $CLIENT_ID
+Client Secret: $CLIENT_SECRET
 ----------------
 EOF
 fi
@@ -90,6 +153,7 @@ AZ_CMD+=(--name nextcloud-deployment --parameters "$SCRIPT_DIR/nextcloud.biceppa
 
 # Append inline parameters (quote values)
 AZ_CMD+=(--parameters "adminPassword=$nextcloud_admin_password" "dbPassword=$nextcloud_db_password" "redisPassword=$nextcloud_redis_password" "sshKeyDataPrivate=$private_key" "sshKeyDataPublic=$public_key")
+AZ_CMD+=("--parameters" "nextcloudClientId=$CLIENT_ID" "nextcloudClientSecret=$CLIENT_SECRET")
 
 # Default location if not provided via --location/-l
 if [[ -z "$LOCATION" ]]; then

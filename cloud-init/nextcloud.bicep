@@ -13,6 +13,11 @@ param adminPassword string
 @secure()
 param redisPassword string
 
+@secure()
+param nextcloudClientId string
+@secure()
+param nextcloudClientSecret string
+
 param tags object
 
 @minLength(2)
@@ -48,11 +53,13 @@ module kv './modules/kv.bicep' = {
   scope: rgnextcloud
   params: {
     subnetNextcloudId: network.outputs.subnetNextcloudId
-    vmNextcloudIdentityPrincipalId: vm.outputs.vmNextcloudIdentityPrincipalId
+    vmNextcloudIdentityPrincipalId: vm.outputs.vmNextcloudIndentityPrincipalId
     sshKeyData: sshKeyDataPrivate
     dbPassword: dbPassword
     adminPassword: adminPassword
     redisPassword: redisPassword
+    nextcloudClientId: nextcloudClientId
+    nextcloudClientSecret: nextcloudClientSecret
     tags: tags
   }
 }

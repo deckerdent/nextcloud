@@ -1,0 +1,64 @@
+name: Deploy Resources
+on: workflow_dispatch
+
+inputs:
+  location:
+    description: "Azure region for resource deployment (e.g. germanywestcentral,
+      eastus, westeurope)"
+    required: false
+    default: "germanywestcentral"
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Azure CLI
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Create App Registration for Nextcloud
+        id: create_app
+        run: |
+          appId=$(az ad app create --display-name "NextcloudApp" --query appId -o tsv)
+          echo "appId=$appId" >> $GITHUB_OUTPUT
+
+      - name: Create Client Secret for App Registration
+        id: create_secret
+        run: |
+          clientSecret=$(az ad app credential reset --id ${{ steps.create_app.outputs.appId }} --query password -o tsv)
+          echo "clientSecret=$clientSecret" >> $GITHUB_OUTPUT
+
+      - name: Generate SSH Key Pair
+        id: generate_ssh
+        run: |
+          ssh-keygen -t rsa -b 2048 -f ssh_key -N ""
+          sshKeyDataPrivate=$(cat ssh_key)
+          sshKeyDataPublic=$(cat ssh_key.pub)
+          echo "sshKeyDataPrivate=$sshKeyDataPrivate" >> $GITHUB_OUTPUT
+          echo "sshKeyDataPublic=$sshKeyDataPublic" >> $GITHUB_OUTPUT
+
+      - name: Generate Random Passwords
+        id: generate_passwords
+        run: |
+          dbPassword=$(openssl rand -base64 32)
+          adminPassword=$(openssl rand -base64 32)
+          redisPassword=$(openssl rand -base64 32)
+          echo "dbPassword=$dbPassword" >> $GITHUB_OUTPUT
+          echo "adminPassword=$adminPassword" >> $GITHUB_OUTPUT
+          echo "redisPassword=$redisPassword" >> $GITHUB_OUTPUT
+
+      - name: Deploy Azure Resources
+        run: |
+          cd cloud-init
+          chmod +x deploy.sh
+          ./deploy.sh --location ${{ github.event.inputs.location }} --client-id ${{ steps.create_app.outputs.appId }} --client-secret ${{ steps.create_secret.outputs.clientSecret }} --ssh-private ${{ steps.generate_ssh.outputs.sshKeyDataPrivate }} --ssh-public ${{ steps.generate_ssh.outputs.sshKeyDataPublic }} --db-password ${{ steps.generate_passwords.outputs.dbPassword }} --admin-password ${{ steps.generate_passwords.outputs.adminPassword }} --redis-password ${{ steps.generate_passwords.outputs.redisPassword }}
