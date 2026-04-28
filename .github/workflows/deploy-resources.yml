@@ -66,10 +66,13 @@ jobs:
         id: generate_ssh
         run: |
           ssh-keygen -t rsa -b 2048 -f ssh_key -N ""
-          sshKeyDataPrivate=$(cat ssh_key)
-          sshKeyDataPublic=$(cat ssh_key.pub)
-          echo "sshKeyDataPrivate=$sshKeyDataPrivate" >> $GITHUB_OUTPUT
-          echo "sshKeyDataPublic=$sshKeyDataPublic" >> $GITHUB_OUTPUT
+          # Use multiline file command syntax to safely set outputs that contain newlines
+          echo "sshKeyDataPrivate<<'EOF'" >> $GITHUB_OUTPUT
+          cat ssh_key >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          echo "sshKeyDataPublic<<'EOF'" >> $GITHUB_OUTPUT
+          cat ssh_key.pub >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Generate Random Passwords
         id: generate_passwords
