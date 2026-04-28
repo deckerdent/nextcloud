@@ -59,8 +59,21 @@ jobs:
             echo "App registration not found after $tries attempts"
             exit 1
           fi
-          clientSecret=$(az ad app credential reset --id ${{ steps.create_app.outputs.appId }} --append --display-name "default" --years 2 --query password -o tsv)
-          echo "clientSecret=$clientSecret" >> $GITHUB_OUTPUT
+          secretTries=5
+          for j in $(seq 1 $secretTries); do
+            clientSecret=$(az ad app credential reset --id "$appId" --append --display-name "default" --years 2 --query password -o tsv 2>/dev/null || true)
+            if [ -n "$clientSecret" ]; then
+              echo "Client secret created after $j attempt(s)"
+              echo "clientSecret=$clientSecret" >> $GITHUB_OUTPUT
+              break
+            fi
+            echo "Waiting for client secret to be created ($j/$secretTries)..."
+            sleep 5
+          done
+          if [ -z "$clientSecret" ]; then
+            echo "Failed to create client secret after $secretTries attempts"
+            exit 1
+          fi
 
       - name: Generate SSH Key Pair
         id: generate_ssh
