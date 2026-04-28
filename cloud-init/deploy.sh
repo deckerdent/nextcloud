@@ -43,56 +43,56 @@ while [[ ${#} -gt 0 ]]; do
 		--test|-t) TEST=1; shift ;;
 		--help|-h) usage ;;
 		--location|-l)
-			if [[ -n ${2-} && ${2:0:1} != '-' ]]; then
+			if [[ -n ${2-} ]]; then
 				LOCATION=$2; shift 2
 			else
 				echo "--location requires an argument" >&2; exit 1
 			fi
 			;;
 		--client-id)
-			if [[ -n ${2-} && ${2:0:1} != '-' ]]; then
+			if [[ -n ${2-} ]]; then
 				CLIENT_ID=$2; shift 2
 			else
 				echo "--client-id requires an argument" >&2; exit 1
 			fi
 			;;
 		--client-secret)
-			if [[ -n ${2-} && ${2:0:1} != '-' ]]; then
+			if [[ -n ${2-} ]]; then
 				CLIENT_SECRET=$2; shift 2
 			else
 				echo "--client-secret requires an argument" >&2; exit 1
 			fi
 			;;
 		--admin-password)
-			if [[ -n ${2-} && ${2:0:1} != '-' ]]; then
+			if [[ -n ${2-} ]]; then
 				NEXTCLOUD_ADMIN_PASSWORD=$2; shift 2
 			else
 				echo "--admin-password requires an argument" >&2; exit 1
 			fi
 			;;
 		--db-password)
-			if [[ -n ${2-} && ${2:0:1} != '-' ]]; then
+			if [[ -n ${2-} ]]; then
 				NEXTCLOUD_DB_PASSWORD=$2; shift 2
 			else
 				echo "--db-password requires an argument" >&2; exit 1
 			fi
 			;;
 		--redis-password)
-			if [[ -n ${2-} && ${2:0:1} != '-' ]]; then
+			if [[ -n ${2-} ]]; then
 				NEXTCLOUD_REDIS_PASSWORD=$2; shift 2
 			else
 				echo "--redis-password requires an argument" >&2; exit 1
 			fi
 			;;
 		--ssh-private)
-			if [[ -n ${2-} && ${2:0:1} != '-' ]]; then
+			if [[ -n ${2-} ]]; then
 				SSH_PRIVATE_KEY=$2; shift 2
 			else
 				echo "--ssh-private requires an argument" >&2; exit 1
 			fi
 			;;
 		--ssh-public)
-			if [[ -n ${2-} && ${2:0:1} != '-' ]]; then
+			if [[ -n ${2-} ]]; then
 				SSH_PUBLIC_KEY=$2; shift 2
 			else
 				echo "--ssh-public requires an argument" >&2; exit 1
