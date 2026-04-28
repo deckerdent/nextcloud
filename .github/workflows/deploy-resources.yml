@@ -41,6 +41,24 @@ jobs:
       - name: Create Client Secret for App Registration
         id: create_secret
         run: |
+          set -euo pipefail
+          appId="${{ steps.create_app.outputs.appId }}"
+          # wait for app registration to propagate
+          tries=12
+          found=false
+          for i in $(seq 1 $tries); do
+            if az ad app show --id "$appId" >/dev/null 2>&1; then
+              echo "App found after $i attempt(s)"
+              found=true
+              break
+            fi
+            echo "Waiting for app registration to appear ($i/$tries)..."
+            sleep 5
+          done
+          if [ "$found" = false ]; then
+            echo "App registration not found after $tries attempts"
+            exit 1
+          fi
           clientSecret=$(az ad app credential reset --id ${{ steps.create_app.outputs.appId }} --append --display-name "default" --years 2 --query password -o tsv)
           echo "clientSecret=$clientSecret" >> $GITHUB_OUTPUT
 
