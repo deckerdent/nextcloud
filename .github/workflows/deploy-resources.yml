@@ -41,7 +41,7 @@ jobs:
       - name: Create Client Secret for App Registration
         id: create_secret
         run: |
-          clientSecret=$(az ad app credential reset --id ${{ steps.create_app.outputs.appId }} --query password -o tsv)
+          clientSecret=$(az ad app credential reset --id ${{ steps.create_app.outputs.appId }} --append --displayName "default" --years 2 --query password -o tsv)
           echo "clientSecret=$clientSecret" >> $GITHUB_OUTPUT
 
       - name: Generate SSH Key Pair
