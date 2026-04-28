@@ -1,12 +1,12 @@
 name: Deploy Resources
-on: workflow_dispatch
-
-inputs:
-  location:
-    description: "Azure region for resource deployment (e.g. germanywestcentral,
-      eastus, westeurope)"
-    required: false
-    default: "germanywestcentral"
+on:
+  workflow_dispatch:
+    inputs:
+      location:
+        description: "Azure region for resource deployment (e.g. germanywestcentral,
+          eastus, westeurope)"
+        required: false
+        default: "germanywestcentral"
 
 permissions:
   contents: read
