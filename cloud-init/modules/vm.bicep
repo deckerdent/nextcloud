@@ -13,7 +13,6 @@ resource diskNextcloud 'Microsoft.Compute/disks@2025-01-02' = {
       createOption: 'Empty'
     }
     diskSizeGB: 128
-    tier: 'E10'
   }
   sku: {
     name: 'StandardSSD_LRS'
