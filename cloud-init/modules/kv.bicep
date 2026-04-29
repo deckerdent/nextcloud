@@ -22,7 +22,7 @@ var secretContentType = 'text/plain'
 
 resource kvnextcloud 'Microsoft.KeyVault/vaults@2025-05-01' = {
   location: resourceGroup().location
-  name: '${namePrefix}-nextcloud'
+  name: '${namePrefix}-nextcloud-${guid(resourceGroup().id, subscription().id, vmNextcloudIdentityPrincipalId)}'
   properties: {
     enableRbacAuthorization: true
     publicNetworkAccess: 'enabled'
