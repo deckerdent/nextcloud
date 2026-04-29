@@ -2,7 +2,10 @@ param tags object
 param vmNextcloudIdentityPrincipalId string
 param subnetNextcloudId string
 @minLength(2)
+@maxLength(5)
 param namePrefix string = 'kv'
+
+var kvName = '${namePrefix}-nxt-${uniqueString(subscription().subscriptionId, resourceGroup().id)}'
 
 @secure()
 param sshKeyData string
@@ -22,7 +25,7 @@ var secretContentType = 'text/plain'
 
 resource kvnextcloud 'Microsoft.KeyVault/vaults@2025-05-01' = {
   location: resourceGroup().location
-  name: '${namePrefix}-nextcloud-${guid(resourceGroup().id, subscription().id, vmNextcloudIdentityPrincipalId)}'
+  name: kvName
   properties: {
     enableRbacAuthorization: true
     publicNetworkAccess: 'enabled'
