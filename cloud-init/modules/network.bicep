@@ -25,7 +25,7 @@ resource nsgNextcloud 'Microsoft.Network/networkSecurityGroups@2025-05-01' = {
   name: '${nsgNamePrefix}-nextcloud'
   tags: tags
   properties: {
-    flushConnection: true
+    flushConnection: false
     securityRules: [
       {
         name: 'Allow-HTTPS-Internet'

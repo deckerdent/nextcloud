@@ -163,9 +163,9 @@ fi
 AZ_CMD+=(--location "$LOCATION")
 
 if [[ "$TEST" -eq 1 ]]; then
-	echo "Executing: az deployment what-if (dry-run) -- invoking Azure CLI (output suppressed)"
+	echo "Executing: az deployment what-if (dry-run) -- invoking Azure CLI (output suppressed as it contains secrets)"
 else
-	echo "Executing: az deployment create -- invoking Azure CLI (output suppressed)"
+	echo "Executing: az deployment create -- invoking Azure CLI (output suppressed as it contains secrets)"
 fi
 
 # Run the Azure CLI command; do not print the command or its arguments (they contain secrets)
