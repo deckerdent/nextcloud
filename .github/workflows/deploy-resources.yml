@@ -11,6 +11,10 @@ on:
         description: "Deployment environment that defines your secrets (e.g. prod, staging)"
         required: false
         default: "prod"
+      domainName:
+        description: "Domain name to configure (e.g. contoso.com)"
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -109,6 +113,7 @@ jobs:
           REDIS_PW="${{ steps.generate_passwords.outputs.redisPassword }}"
           CLIENT_ID="${{ steps.create_app.outputs.appId }}"
           CLIENT_SECRET="${{ steps.create_secret.outputs.clientSecret }}"
+            DOMAIN_NAME="${{ github.event.inputs.domainName }}"
 
           ./deploy.sh \
             --location "${{ github.event.inputs.location }}" \
@@ -119,3 +124,4 @@ jobs:
             --db-password "$DB_PW" \
             --admin-password "$ADMIN_PW" \
             --redis-password "$REDIS_PW"
+              --domainName "$DOMAIN_NAME"

@@ -17,12 +17,13 @@ NEXTCLOUD_DB_PASSWORD=""
 NEXTCLOUD_REDIS_PASSWORD=""
 SSH_PRIVATE_KEY=""
 SSH_PUBLIC_KEY=""
+DOMAIN_NAME=""
 
 usage() {
 	cat <<USAGE
-Usage: $(basename "$0") [--debug] [--test] --client-id <id> --client-secret <secret> \
+	Usage: $(basename "$0") [--debug] [--test] --client-id <id> --client-secret <secret> \
 	   --admin-password <pw> --db-password <pw> --redis-password <pw> \
-	   --ssh-private '<private-key>' --ssh-public '<public-key>' [--location <region>]
+	   --ssh-private '<private-key>' --ssh-public '<public-key>' --domainName <domain> [--location <region>]
 	--debug            Print provided passwords and SSH keys (use with caution)
 	--test             Run az deployment as a what-if (dry-run) instead of creating
 	--client-id        (required) Client id to pass as inline parameter
@@ -32,6 +33,7 @@ Usage: $(basename "$0") [--debug] [--test] --client-id <id> --client-secret <sec
 	--redis-password   (required) Redis password
 	--ssh-private      (required) SSH private key (PEM or OpenSSH format)
 	--ssh-public       (required) SSH public key (authorized_keys format)
+	--domainName      (required) Domain name to configure (e.g. contoso.com)
 	--location|-l      (optional) Azure location, default germanywestcentral
 USAGE
 	exit 1
@@ -98,6 +100,13 @@ while [[ ${#} -gt 0 ]]; do
 				echo "--ssh-public requires an argument" >&2; exit 1
 			fi
 			;;
+		--domainName)
+			if [[ -n ${2-} ]]; then
+				DOMAIN_NAME=$2; shift 2
+			else
+				echo "--domainName requires an argument" >&2; exit 1
+			fi
+			;;
 		--) shift; break ;;
 		*) echo "Unknown option: $1" >&2; usage ;;
 	esac
@@ -110,9 +119,10 @@ if [[ -z "$CLIENT_ID" || -z "$CLIENT_SECRET" ]]; then
 fi
 
 # enforce provided passwords and ssh keys
-if [[ -z "$NEXTCLOUD_ADMIN_PASSWORD" || -z "$NEXTCLOUD_DB_PASSWORD" || -z "$NEXTCLOUD_REDIS_PASSWORD" || -z "$SSH_PRIVATE_KEY" || -z "$SSH_PUBLIC_KEY" ]]; then
-	echo "Error: --admin-password, --db-password, --redis-password, --ssh-private, and --ssh-public are required" >&2
-	usage
+
+if [[ -z "$NEXTCLOUD_ADMIN_PASSWORD" || -z "$NEXTCLOUD_DB_PASSWORD" || -z "$NEXTCLOUD_REDIS_PASSWORD" || -z "$SSH_PRIVATE_KEY" || -z "$SSH_PUBLIC_KEY" || -z "$DOMAIN_NAME" ]]; then
+  echo "Error: --admin-password, --db-password, --redis-password, --ssh-private, --ssh-public, and --domainName are required" >&2
+  usage
 fi
 
 # use provided secrets
@@ -153,7 +163,7 @@ AZ_CMD+=(--name nextcloud-deployment --parameters "$SCRIPT_DIR/nextcloud.biceppa
 
 # Append inline parameters (quote values)
 AZ_CMD+=(--parameters "adminPassword=$nextcloud_admin_password" "dbPassword=$nextcloud_db_password" "redisPassword=$nextcloud_redis_password" "sshKeyDataPrivate=$private_key" "sshKeyDataPublic=$public_key")
-AZ_CMD+=("--parameters" "nextcloudClientId=$CLIENT_ID" "nextcloudClientSecret=$CLIENT_SECRET")
+AZ_CMD+=("--parameters" "nextcloudClientId=$CLIENT_ID" "nextcloudClientSecret=$CLIENT_SECRET" "domainName=$DOMAIN_NAME")
 
 # Default location if not provided via --location/-l
 if [[ -z "$LOCATION" ]]; then

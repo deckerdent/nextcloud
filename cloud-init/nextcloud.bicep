@@ -4,6 +4,8 @@ param location string = 'germanywestcentral'
 
 param sshKeyDataPublic string
 
+param domainName string
+
 @secure()
 param sshKeyDataPrivate string
 @secure()
@@ -60,6 +62,17 @@ module kv './modules/kv.bicep' = {
     redisPassword: redisPassword
     nextcloudClientId: nextcloudClientId
     nextcloudClientSecret: nextcloudClientSecret
+    tags: tags
+  }
+}
+
+module dns './modules/dns.bicep' = {
+  name: 'dnsNextcloud'
+  scope: rgnextcloud
+  params: {
+    dnsZoneName: domainName
+    publicStaticIp: network.outputs.publicStaticIpNextcloudAddress
+    vmNextcloudIdentityPrincipalId: vm.outputs.vmNextcloudIndentityPrincipalId
     tags: tags
   }
 }

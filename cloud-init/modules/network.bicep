@@ -45,7 +45,7 @@ resource nsgNextcloud 'Microsoft.Network/networkSecurityGroups@2025-05-01' = {
         properties: {
           access: 'Allow'
           direction: 'Inbound'
-          priority: 300
+          priority: 200
           protocol: 'Tcp'
           sourceAddressPrefix: '*'
           sourcePortRange: '*'
@@ -58,7 +58,7 @@ resource nsgNextcloud 'Microsoft.Network/networkSecurityGroups@2025-05-01' = {
         properties: {
           access: 'Allow'
           direction: 'Outbound'
-          priority: 200
+          priority: 101
           protocol: 'Tcp'
           sourceAddressPrefix: '*'
           sourcePortRange: '*'
@@ -66,6 +66,55 @@ resource nsgNextcloud 'Microsoft.Network/networkSecurityGroups@2025-05-01' = {
           destinationPortRanges: [
             '443'
             '80'
+          ]
+        }
+      }
+      {
+        name: 'Allow-SMTP-Inbound'
+        properties: {
+          access: 'Allow'
+          direction: 'Inbound'
+          priority: 300
+          protocol: 'Tcp'
+          sourceAddressPrefix: '*'
+          sourcePortRange: '*'
+          destinationAddressPrefix: '*'
+          destinationPortRanges: [
+            '25'
+            '587'
+            '465'
+          ]
+        }
+      }
+      {
+        name: 'Allow-SMTP-Outbound'
+        properties: {
+          access: 'Allow'
+          direction: 'Outbound'
+          priority: 301
+          protocol: 'Tcp'
+          sourceAddressPrefix: '*'
+          sourcePortRange: '*'
+          destinationAddressPrefix: '*'
+          destinationPortRanges: [
+            '25'
+            '587'
+            '465'
+          ]
+        }
+      }
+      {
+        name: 'Allow-IMAP-Inbound'
+        properties: {
+          access: 'Allow'
+          direction: 'Inbound'
+          priority: 302
+          protocol: 'Tcp'
+          sourceAddressPrefix: '*'
+          sourcePortRange: '*'
+          destinationAddressPrefix: '*'
+          destinationPortRanges: [
+            '993'
           ]
         }
       }
@@ -129,3 +178,4 @@ resource nicNextcloudVM 'Microsoft.Network/networkInterfaces@2025-05-01' = {
 
 output nicNextcloudVMId string = nicNextcloudVM.id
 output subnetNextcloudId string = virtualNetworkNextcloud.properties.subnets[0].id
+output publicStaticIpNextcloudAddress string = publicIPNextcloud.properties.ipAddress
