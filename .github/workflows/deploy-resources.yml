@@ -113,7 +113,7 @@ jobs:
           REDIS_PW="${{ steps.generate_passwords.outputs.redisPassword }}"
           CLIENT_ID="${{ steps.create_app.outputs.appId }}"
           CLIENT_SECRET="${{ steps.create_secret.outputs.clientSecret }}"
-            DOMAIN_NAME="${{ github.event.inputs.domainName }}"
+          DOMAIN_NAME="${{ github.event.inputs.domainName }}"
 
           ./deploy.sh \
             --location "${{ github.event.inputs.location }}" \
@@ -123,5 +123,5 @@ jobs:
             --ssh-public "$SSH_PUBLIC" \
             --db-password "$DB_PW" \
             --admin-password "$ADMIN_PW" \
-            --redis-password "$REDIS_PW"
-              --domainName "$DOMAIN_NAME"
+            --redis-password "$REDIS_PW" \
+            --domainName "$DOMAIN_NAME"
