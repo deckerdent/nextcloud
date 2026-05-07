@@ -5,7 +5,6 @@ param publicStaticIp string
 param vmNextcloudIdentityPrincipalId string
 
 resource dnsNextcloud 'Microsoft.Network/dnsZones@2023-07-01-preview' = {
-  etag: uniqueString(resourceGroup().id, dnsZoneName, '1')
   name: dnsZoneName
   location: 'global'
   properties: {
@@ -18,7 +17,6 @@ var aRecordName = 'www'
 resource domainEntryWWWNextcloud 'Microsoft.Network/dnsZones/A@2023-07-01-preview' = {
   parent: dnsNextcloud
   name: aRecordName
-  etag: uniqueString(resourceGroup().id, dnsZoneName, aRecordName, '1')
   properties: {
     TTL: 3600
     ARecords: [
@@ -32,7 +30,6 @@ resource domainEntryWWWNextcloud 'Microsoft.Network/dnsZones/A@2023-07-01-previe
 resource domainEntryApexNextcloud 'Microsoft.Network/dnsZones/A@2023-07-01-preview' = {
   parent: dnsNextcloud
   name: '@'
-  etag: uniqueString(resourceGroup().id, dnsZoneName, 'apex', '1')
   properties: {
     TTL: 3600
     ARecords: [
@@ -46,7 +43,6 @@ resource domainEntryApexNextcloud 'Microsoft.Network/dnsZones/A@2023-07-01-previ
 resource symbolicname 'Microsoft.Network/dnsZones/MX@2023-07-01-preview' = {
   parent: dnsNextcloud
   name: '@'
-  etag: uniqueString(resourceGroup().id, dnsZoneName, 'mail', '1')
   properties: {
     TTL: 3600
     MXRecords: [

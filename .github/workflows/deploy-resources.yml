@@ -68,6 +68,8 @@ jobs:
             clientSecret=$(az ad app credential reset --id "$appId" --append --display-name "default" --years 2 --query password -o tsv 2>/dev/null || true)
             if [ -n "$clientSecret" ]; then
               echo "Client secret created after $j attempt(s)"
+              # mask the client secret so it cannot appear in logs
+              echo "::add-mask::$clientSecret"
               echo "clientSecret=$clientSecret" >> $GITHUB_OUTPUT
               break
             fi
@@ -86,8 +88,13 @@ jobs:
           # Base64-encode keys to produce single-line outputs safe for passing
           base64 -w0 ssh_key > ssh_key.b64
           base64 -w0 ssh_key.pub > ssh_key_pub.b64
-          echo "sshKeyDataPrivateB64=$(cat ssh_key.b64)" >> $GITHUB_OUTPUT
-          echo "sshKeyDataPublicB64=$(cat ssh_key_pub.b64)" >> $GITHUB_OUTPUT
+          # read into variables so we can mask them before exposing as outputs
+          ssh_priv_b64=$(cat ssh_key.b64)
+          ssh_pub_b64=$(cat ssh_key_pub.b64)
+          echo "::add-mask::$ssh_priv_b64"
+          echo "::add-mask::$ssh_pub_b64"
+          echo "sshKeyDataPrivateB64=$ssh_priv_b64" >> $GITHUB_OUTPUT
+          echo "sshKeyDataPublicB64=$ssh_pub_b64" >> $GITHUB_OUTPUT
 
       - name: Generate Random Passwords
         id: generate_passwords
@@ -95,6 +102,10 @@ jobs:
           dbPassword=$(openssl rand -base64 32)
           adminPassword=$(openssl rand -base64 32)
           redisPassword=$(openssl rand -base64 32)
+          # mask generated secrets so they do not appear in logs
+          echo "::add-mask::$dbPassword"
+          echo "::add-mask::$adminPassword"
+          echo "::add-mask::$redisPassword"
           echo "dbPassword=$dbPassword" >> $GITHUB_OUTPUT
           echo "adminPassword=$adminPassword" >> $GITHUB_OUTPUT
           echo "redisPassword=$redisPassword" >> $GITHUB_OUTPUT
@@ -114,6 +125,14 @@ jobs:
           CLIENT_ID="${{ steps.create_app.outputs.appId }}"
           CLIENT_SECRET="${{ steps.create_secret.outputs.clientSecret }}"
           DOMAIN_NAME="${{ github.event.inputs.domainName }}"
+
+          # mask the local variables in this step as well (prevents accidental logging)
+          echo "::add-mask::$SSH_PRIVATE"
+          echo "::add-mask::$SSH_PUBLIC"
+          echo "::add-mask::$DB_PW"
+          echo "::add-mask::$ADMIN_PW"
+          echo "::add-mask::$REDIS_PW"
+          echo "::add-mask::$CLIENT_SECRET"
 
           ./deploy.sh \
             --location "${{ github.event.inputs.location }}" \
