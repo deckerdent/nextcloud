@@ -55,7 +55,7 @@ module kv './modules/kv.bicep' = {
   scope: rgnextcloud
   params: {
     subnetNextcloudId: network.outputs.subnetNextcloudId
-    vmNextcloudIdentityPrincipalId: vm.outputs.vmNextcloudIndentityPrincipalId
+    vmNextcloudIdentityPrincipalId: vm.outputs.vmNextcloudIdentityPrincipalId
     sshKeyData: sshKeyDataPrivate
     dbPassword: dbPassword
     adminPassword: adminPassword
@@ -72,7 +72,7 @@ module dns './modules/dns.bicep' = {
   params: {
     dnsZoneName: domainName
     publicStaticIp: network.outputs.publicStaticIpNextcloudAddress
-    vmNextcloudIdentityPrincipalId: vm.outputs.vmNextcloudIndentityPrincipalId
+    vmNextcloudIdentityPrincipalId: vm.outputs.vmNextcloudIdentityPrincipalId
     tags: tags
   }
 }

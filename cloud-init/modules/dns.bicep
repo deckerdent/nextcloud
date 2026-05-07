@@ -7,7 +7,7 @@ param vmNextcloudIdentityPrincipalId string
 resource dnsNextcloud 'Microsoft.Network/dnsZones@2023-07-01-preview' = {
   etag: uniqueString(resourceGroup().id, dnsZoneName, '1')
   name: dnsZoneName
-  location: resourceGroup().location
+  location: 'global'
   properties: {
     zoneType: 'Public'
   }

@@ -82,4 +82,4 @@ resource vmnextcloud 'Microsoft.Compute/virtualMachines@2025-04-01' = {
   }
 }
 
-output vmNextcloudIndentityPrincipalId string = vmnextcloud.identity.principalId
+output vmNextcloudIdentityPrincipalId string = vmnextcloud.identity.principalId
