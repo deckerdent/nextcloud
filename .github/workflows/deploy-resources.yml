@@ -68,8 +68,6 @@ jobs:
             clientSecret=$(az ad app credential reset --id "$appId" --append --display-name "default" --years 2 --query password -o tsv 2>/dev/null || true)
             if [ -n "$clientSecret" ]; then
               echo "Client secret created after $j attempt(s)"
-              # mask the client secret so it cannot appear in logs
-              echo "::add-mask::$clientSecret"
               echo "clientSecret=$clientSecret" >> $GITHUB_OUTPUT
               break
             fi
@@ -88,9 +86,9 @@ jobs:
           # Base64-encode keys to produce single-line outputs safe for passing
           base64 -w0 ssh_key > ssh_key.b64
           base64 -w0 ssh_key.pub > ssh_key_pub.b64
-          # read into variables so we can mask them before exposing as outputs
           ssh_priv_b64=$(cat ssh_key.b64)
           ssh_pub_b64=$(cat ssh_key_pub.b64)
+          # mask the SSH key material so it cannot appear in logs
           echo "::add-mask::$ssh_priv_b64"
           echo "::add-mask::$ssh_pub_b64"
           echo "sshKeyDataPrivateB64=$ssh_priv_b64" >> $GITHUB_OUTPUT
@@ -114,25 +112,18 @@ jobs:
         run: |
           cd cloud-init
           chmod +x deploy.sh
-          SSH_PRIVATE_B64="${{ steps.generate_ssh.outputs.sshKeyDataPrivateB64 }}"
-          SSH_PUBLIC_B64="${{ steps.generate_ssh.outputs.sshKeyDataPublicB64 }}"
+          # read secrets from runner temp files (never expose them as step outputs)
+          SSH_PRIVATE_B64=$(cat "$RUNNER_TEMP/ssh_key.b64")
+          SSH_PUBLIC_B64=$(cat "$RUNNER_TEMP/ssh_key_pub.b64")
           # decode base64 into variables preserving newlines for the script
           SSH_PRIVATE=$(printf '%s' "$SSH_PRIVATE_B64" | base64 --decode)
           SSH_PUBLIC=$(printf '%s' "$SSH_PUBLIC_B64" | base64 --decode)
-          DB_PW="${{ steps.generate_passwords.outputs.dbPassword }}"
-          ADMIN_PW="${{ steps.generate_passwords.outputs.adminPassword }}"
-          REDIS_PW="${{ steps.generate_passwords.outputs.redisPassword }}"
+          DB_PW=$(cat "$RUNNER_TEMP/nextcloud_db_password")
+          ADMIN_PW=$(cat "$RUNNER_TEMP/nextcloud_admin_password")
+          REDIS_PW=$(cat "$RUNNER_TEMP/nextcloud_redis_password")
           CLIENT_ID="${{ steps.create_app.outputs.appId }}"
-          CLIENT_SECRET="${{ steps.create_secret.outputs.clientSecret }}"
+          CLIENT_SECRET=$(cat "$RUNNER_TEMP/nextcloud_client_secret")
           DOMAIN_NAME="${{ github.event.inputs.domainName }}"
-
-          # mask the local variables in this step as well (prevents accidental logging)
-          echo "::add-mask::$SSH_PRIVATE"
-          echo "::add-mask::$SSH_PUBLIC"
-          echo "::add-mask::$DB_PW"
-          echo "::add-mask::$ADMIN_PW"
-          echo "::add-mask::$REDIS_PW"
-          echo "::add-mask::$CLIENT_SECRET"
 
           ./deploy.sh \
             --location "${{ github.event.inputs.location }}" \
