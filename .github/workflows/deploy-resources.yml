@@ -109,23 +109,25 @@ jobs:
           echo "redisPassword=$redisPassword" >> $GITHUB_OUTPUT
 
       - name: Deploy Azure Resources
+        id: deploy_run
         run: |
+          set -euo pipefail
           cd cloud-init
           chmod +x deploy.sh
-          # read secrets from runner temp files (never expose them as step outputs)
-          SSH_PRIVATE_B64=$(cat "$RUNNER_TEMP/ssh_key.b64")
-          SSH_PUBLIC_B64=$(cat "$RUNNER_TEMP/ssh_key_pub.b64")
+          SSH_PRIVATE_B64="${{ steps.generate_ssh.outputs.sshKeyDataPrivateB64 }}"
+          SSH_PUBLIC_B64="${{ steps.generate_ssh.outputs.sshKeyDataPublicB64 }}"
           # decode base64 into variables preserving newlines for the script
           SSH_PRIVATE=$(printf '%s' "$SSH_PRIVATE_B64" | base64 --decode)
           SSH_PUBLIC=$(printf '%s' "$SSH_PUBLIC_B64" | base64 --decode)
-          DB_PW=$(cat "$RUNNER_TEMP/nextcloud_db_password")
-          ADMIN_PW=$(cat "$RUNNER_TEMP/nextcloud_admin_password")
-          REDIS_PW=$(cat "$RUNNER_TEMP/nextcloud_redis_password")
+          DB_PW="${{ steps.generate_passwords.outputs.dbPassword }}"
+          ADMIN_PW="${{ steps.generate_passwords.outputs.adminPassword }}"
+          REDIS_PW="${{ steps.generate_passwords.outputs.redisPassword }}"
           CLIENT_ID="${{ steps.create_app.outputs.appId }}"
-          CLIENT_SECRET=$(cat "$RUNNER_TEMP/nextcloud_client_secret")
+          CLIENT_SECRET="${{ steps.create_secret.outputs.clientSecret }}"
           DOMAIN_NAME="${{ github.event.inputs.domainName }}"
 
-          ./deploy.sh \
+          # run deploy.sh and capture the base64 JSON it writes to stdout
+          deploy_b64=$(./deploy.sh \
             --location "${{ github.event.inputs.location }}" \
             --client-id "$CLIENT_ID" \
             --client-secret "$CLIENT_SECRET" \
@@ -134,4 +136,35 @@ jobs:
             --db-password "$DB_PW" \
             --admin-password "$ADMIN_PW" \
             --redis-password "$REDIS_PW" \
-            --domainName "$DOMAIN_NAME"
+            --domainName "$DOMAIN_NAME")
+
+          if [ -z "$deploy_b64" ]; then
+            echo "No deployment result received from deploy.sh" >&2
+            exit 1
+          fi
+
+          # expose as step output
+          echo "deploy_result_b64=$deploy_b64" >> $GITHUB_OUTPUT
+
+      - name: Collect Bicep outputs
+        id: collect_deploy
+        run: |
+          set -euo pipefail
+          deploy_b64="${{ steps.deploy_run.outputs.deploy_result_b64 }}"
+          if [ -z "$deploy_b64" ]; then
+            echo "No deploy result b64 available" >&2
+            exit 1
+          fi
+          decoded=$(printf '%s' "$deploy_b64" | base64 --decode)
+
+          deploymentId=$(printf '%s' "$decoded" | sed -n 's/.*"deploymentId":"\([^"]*\)".*/\1/p')
+          rgId=$(printf '%s' "$decoded" | sed -n 's/.*"resourceGroupId":"\([^"]*\)".*/\1/p')
+          staticIp=$(printf '%s' "$decoded" | sed -n 's/.*"publicStaticIp":"\([^"]*\)".*/\1/p')
+
+          echo "bicep finished deployment $deploymentId."
+          echo "bicep deployed resource group $rgId."
+          echo "bicep deployed static ip $staticIp and points it to the vm."
+
+          echo "deploymentId=$deploymentId" >> $GITHUB_OUTPUT
+          echo "rgId=$rgId" >> $GITHUB_OUTPUT
+          echo "publicStaticIp=$staticIp" >> $GITHUB_OUTPUT

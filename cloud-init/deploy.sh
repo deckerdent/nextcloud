@@ -173,11 +173,34 @@ fi
 AZ_CMD+=(--location "$LOCATION")
 
 if [[ "$TEST" -eq 1 ]]; then
-	echo "Executing: az deployment what-if (dry-run) -- invoking Azure CLI (output suppressed as it contains secrets)"
+		echo "Executing: az deployment what-if (dry-run) -- invoking Azure CLI (output suppressed as it contains secrets)"
+		# run what-if (no outputs expected)
+		"${AZ_CMD[@]}"
 else
-	echo "Executing: az deployment create -- invoking Azure CLI (output suppressed as it contains secrets)"
-fi
+		echo "Executing: az deployment create -- invoking Azure CLI (output suppressed as it contains secrets)"
+		# run create and directly query the deployment resource for the fields we need
+		deploy_json=$("${AZ_CMD[@]}" --query "{deploymentId:id,resourceGroupId:properties.outputs.resourceGroupId.value,publicStaticIp:properties.outputs.publicStaticIp.value}" -o json 2>/dev/null)
 
-# Run the Azure CLI command; do not print the command or its arguments (they contain secrets)
-"${AZ_CMD[@]}"
+		if [[ -z "$deploy_json" ]]; then
+			echo "Deployment command returned no JSON output" >&2
+			exit 1
+		fi
+
+		# extract values from the returned JSON using shell tools
+		deployment_id=$(printf '%s' "$deploy_json" | sed -n 's/.*"deploymentId"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+		rg_id=$(printf '%s' "$deploy_json" | sed -n 's/.*"resourceGroupId"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+		public_ip=$(printf '%s' "$deploy_json" | sed -n 's/.*"publicStaticIp"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+
+		# build JSON and emit base64 on stdout (human readable lines go to stderr)
+		json=$(printf '{"deploymentId":"%s","resourceGroupId":"%s","publicStaticIp":"%s"}' "$deployment_id" "$rg_id" "$public_ip")
+		b64=$(printf '%s' "$json" | base64 -w0)
+		# print base64 JSON to stdout (caller will capture this)
+		printf '%s' "$b64"
+		# also print human-friendly messages to stderr
+		echo "" >&2
+		echo "Wrote deployment results (base64) to stdout" >&2
+		echo "deploymentId=$deployment_id" >&2
+		echo "resourceGroupId=$rg_id" >&2
+		echo "publicStaticIp=$public_ip" >&2
+fi
 

@@ -32,6 +32,9 @@ resource rgnextcloud 'Microsoft.Resources/resourceGroups@2025-04-01' = {
   tags: tags
 }
 
+output resourceGroupName string = rgnextcloud.name
+output resourceGroupId string = rgnextcloud.id
+
 module network './modules/network.bicep' = {
   name: 'networkNextcloud'
   scope: rgnextcloud
@@ -39,6 +42,8 @@ module network './modules/network.bicep' = {
     tags: tags
   }
 }
+
+output publicStaticIp string = network.outputs.publicStaticIpNextcloudAddress
 
 module vm './modules/vm.bicep' = {
   name: 'vmNextcloud'
