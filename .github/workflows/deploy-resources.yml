@@ -143,8 +143,10 @@ jobs:
             exit 1
           fi
 
-          # expose as step output
-          echo "deploy_result_b64=$deploy_b64" >> $GITHUB_OUTPUT
+          # expose as step output (use multiline-safe file command)
+          echo "deploy_result_b64<<EOF" >> $GITHUB_OUTPUT
+          printf '%s' "$deploy_b64" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Collect Bicep outputs
         id: collect_deploy
