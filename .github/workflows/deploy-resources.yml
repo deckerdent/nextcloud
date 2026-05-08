@@ -145,7 +145,8 @@ jobs:
 
           # expose as step output (use multiline-safe file command)
           echo "deploy_result_b64<<EOF" >> $GITHUB_OUTPUT
-          printf '%s' "$deploy_b64" >> $GITHUB_OUTPUT
+          # ensure a trailing newline so the closing EOF is on its own line
+          printf '%s\n' "$deploy_b64" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Collect Bicep outputs
