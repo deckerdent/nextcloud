@@ -126,8 +126,8 @@ jobs:
           CLIENT_SECRET="${{ steps.create_secret.outputs.clientSecret }}"
           DOMAIN_NAME="${{ github.event.inputs.domainName }}"
 
-          # run deploy.sh and capture the base64 JSON it writes to stdout
-          deploy_b64=$(./deploy.sh \
+          # run deploy.sh and capture raw stdout (suppress stderr)
+          deploy_output_raw=$(./deploy.sh \
             --location "${{ github.event.inputs.location }}" \
             --client-id "$CLIENT_ID" \
             --client-secret "$CLIENT_SECRET" \
@@ -136,10 +136,15 @@ jobs:
             --db-password "$DB_PW" \
             --admin-password "$ADMIN_PW" \
             --redis-password "$REDIS_PW" \
-            --domainName "$DOMAIN_NAME")
+            --domainName "$DOMAIN_NAME" 2>/dev/null || true)
+
+          # extract the last base64-like token from the output (robust against extra text)
+          deploy_b64=$(printf '%s' "$deploy_output_raw" | grep -oE '[A-Za-z0-9+/=]{20,}' | tail -n1 || true)
 
           if [ -z "$deploy_b64" ]; then
-            echo "No deployment result received from deploy.sh" >&2
+            echo "No deploy result b64 available" >&2
+            echo "Raw output:" >&2
+            printf '%s\n' "$deploy_output_raw" >&2
             exit 1
           fi
 
