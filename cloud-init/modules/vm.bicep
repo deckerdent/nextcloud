@@ -1,8 +1,10 @@
 param nicNextcloudVMId string
 param namePrefix string = 'vm'
-param adminUsername string = '${namePrefix}-admin-nextcloud'
+param adminUsername string = 'vm-admin-nextcloud'
 param sshKeyData string
 param tags object
+
+var cloudInitScriptPath = '../vm-nextcloud-cloud-init.yaml'
 
 resource diskNextcloud 'Microsoft.Compute/disks@2025-01-02' = {
   location: resourceGroup().location
@@ -67,6 +69,9 @@ resource vmnextcloud 'Microsoft.Compute/virtualMachines@2025-04-01' = {
     osProfile: {
       computerName: '${namePrefix}-nextcloud'
       adminUsername: adminUsername
+      //Ref: https://learn.microsoft.com/en-us/azure/virtual-machines/custom-data 
+      //and https://learn.microsoft.com/en-us/azure/virtual-machines/linux/using-cloud-init
+      customData: loadFileAsBase64(cloudInitScriptPath)
       linuxConfiguration: {
         disablePasswordAuthentication: true
         ssh: {

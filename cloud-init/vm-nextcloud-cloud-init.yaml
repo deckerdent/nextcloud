@@ -1,0 +1,49 @@
+#cloud-config
+#ref: https://docs.cloud-init.io/en/latest/reference/yaml_examples/disk_setup.html
+disk_setup:
+  #ref: https://learn.microsoft.com/en-us/azure/virtual-machines/linux/azure-virtual-machine-utilities
+  /dev/disk/azure/scsi1/lun0:
+    # Matches Bicep LUN 0
+    table_type: "gpt"
+    layout: [100]
+    overwrite: false
+
+fs_setup:
+  - device: /dev/disk/azure/scsi1/lun0
+    partition: 1
+    filesystem: ext4
+    overwrite: false
+
+mounts:
+  - [/dev/disk/azure/scsi1/lun0-part1, /var/lib/nextcloud]
+
+package_update: true
+packages:
+  - docker.io
+  - azure-cli
+
+write_files:
+  - path: /etc/systemd/system/nextcloud.service
+    permissions: "0644"
+    content: |
+      [Unit]
+      Description=Nextcloud Placeholder
+      [Service]
+      ExecStart=/bin/true
+      [Install]
+      WantedBy=multi-user.target
+
+# Configure the system environment
+runcmd:
+  # Ensure the docker group exists and the default user is added
+  - usermod -aG docker vm-admin-nextcloud
+
+  # Ensure Docker starts automatically on every boot
+  - systemctl enable docker
+  - systemctl start docker
+  - systemctl enable nextcloud.service
+
+  # Create the directory where your GitHub Action will drop the compose files
+  - mkdir -p /opt/nextcloud
+  - chown vm-admin-nextcloud:vm-admin-nextcloud /opt/nextcloud
+  - chmod 755 /opt/nextcloud

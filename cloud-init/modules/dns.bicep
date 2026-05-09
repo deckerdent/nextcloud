@@ -40,7 +40,7 @@ resource domainEntryApexNextcloud 'Microsoft.Network/dnsZones/A@2023-07-01-previ
   }
 }
 
-resource symbolicname 'Microsoft.Network/dnsZones/MX@2023-07-01-preview' = {
+resource mailServerApexNextcloud 'Microsoft.Network/dnsZones/MX@2023-07-01-preview' = {
   parent: dnsNextcloud
   name: '@'
   properties: {
