@@ -3,7 +3,8 @@ on:
   workflow_dispatch:
     inputs:
       location:
-        description: "Azure region for resource deployment (e.g. germanywestcentral,
+        description:
+          "Azure region for resource deployment (e.g. germanywestcentral,
           eastus, westeurope)"
         required: false
         default: "germanywestcentral"
@@ -13,6 +14,10 @@ on:
         default: "prod"
       domainName:
         description: "Domain name to configure (e.g. contoso.com)"
+        required: true
+        type: string
+      swagEmail:
+        description: "Email address for Let's Encrypt certificate notifications"
         required: true
         type: string
 
@@ -164,18 +169,22 @@ jobs:
             exit 1
           fi
           decoded=$(printf '%s' "$deploy_b64" | base64 --decode)
-
           deploymentId=$(printf '%s' "$decoded" | sed -n 's/.*"deploymentId":"\([^"]*\)".*/\1/p')
           rgId=$(printf '%s' "$decoded" | sed -n 's/.*"resourceGroupId":"\([^"]*\)".*/\1/p')
           staticIp=$(printf '%s' "$decoded" | sed -n 's/.*"publicStaticIp":"\([^"]*\)".*/\1/p')
+          keyVaultName=$(printf '%s' "$decoded" | sed -n 's/.*"keyVaultName":"\([^"]*\)".*/\1/p')
+          keyVaultId=$(printf '%s' "$decoded" | sed -n 's/.*"keyVaultId":"\([^"]*\)".*/\1/p')
 
           echo "bicep finished deployment $deploymentId."
           echo "bicep deployed resource group $rgId."
           echo "bicep deployed static ip $staticIp and points it to the vm."
+          echo "bicep created Key Vault $keyVaultName (id: $keyVaultId)"
 
           echo "deploymentId=$deploymentId" >> $GITHUB_OUTPUT
           echo "rgId=$rgId" >> $GITHUB_OUTPUT
           echo "publicStaticIp=$staticIp" >> $GITHUB_OUTPUT
+          echo "keyVaultName=$keyVaultName" >> $GITHUB_OUTPUT
+          echo "keyVaultId=$keyVaultId" >> $GITHUB_OUTPUT
 
       - name: Verify DNS and VM connectivity
         run: |
@@ -209,10 +218,130 @@ jobs:
             echo "SSH not reachable"
           fi
 
-          # test HTTPS overriding DNS
-          echo "Testing HTTPS via --resolve to $public_ip"
-          if curl -k --resolve "www.$domain:443:$public_ip" --max-time 10 -I "https://www.$domain" >/dev/null 2>&1; then
-            echo "HTTPS OK"
-          else
-            echo "HTTPS test failed"
-          fi
+      - name: Prepare deployment staging
+        run: |
+          set -euo pipefail
+          rgId="${{ steps.collect_deploy.outputs.rgId }}"
+          domain="${{ github.event.inputs.domainName }}"
+          keyVaultName="${{ steps.collect_deploy.outputs.keyVaultName }}"
+          ssh_priv_b64="${{ steps.generate_ssh.outputs.sshKeyDataPrivateB64 }}"
+
+          STAGE="nc-deploy-staging"
+          mkdir -p "$STAGE"
+
+          # Copy deployment tree, excluding raw templates (those get rendered below)
+          rsync -a --exclude='opt/nextcloud/templates' deployment/ "$STAGE/"
+
+          # azure.ini: substitute AZURE_RESOURCE_GROUP (may contain slashes) and PRIMARY_DOMAIN
+          mkdir -p "$STAGE/opt/nextcloud/config/swag/config/dns-conf"
+          awk -v rg="$rgId" -v domain="$domain" '{
+            gsub(/\$!{{AZURE_RESOURCE_GROUP}}/, rg)
+            gsub(/\$!{{PRIMARY_DOMAIN}}/, domain)
+            print
+          }' deployment/opt/nextcloud/templates/azure.ini \
+            > "$STAGE/opt/nextcloud/config/swag/config/dns-conf/azure.ini"
+
+          # .env: substitute PRIMARY_DOMAIN and SWAG_EMAIL
+          swagEmail="${{ github.event.inputs.swagEmail }}"
+          sed 's|\$!{{PRIMARY_DOMAIN}}|'"$domain"'|g; s|\$!{{SWAG_EMAIL}}|'"$swagEmail"'|g' \
+            deployment/opt/nextcloud/templates/.env.example \
+            > "$STAGE/opt/nextcloud/.env"
+
+          # SWAG proxy conf (no substitutions needed)
+          mkdir -p "$STAGE/opt/nextcloud/config/swag/config/nginx/proxy-confs"
+          cp deployment/opt/nextcloud/templates/nextcloud.subfolder.conf \
+            "$STAGE/opt/nextcloud/config/swag/config/nginx/proxy-confs/nextcloud.subfolder.conf"
+
+          # Key Vault name
+          mkdir -p "$STAGE/etc/keyvault"
+          printf '%s' "$keyVaultName" > "$STAGE/etc/keyvault/.keyvaultname"
+
+          # Decode SSH private key and mask it before storing in GITHUB_ENV
+          ssh_private=$(printf '%s' "$ssh_priv_b64" | base64 --decode)
+          echo "::add-mask::$ssh_private"
+          {
+            echo "SSH_PRIVATE_KEY<<EOF"
+            printf '%s\n' "$ssh_private"
+            echo "EOF"
+          } >> "$GITHUB_ENV"
+
+      - name: Copy deployment files to VM
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ steps.collect_deploy.outputs.publicStaticIp }}
+          username: vm-admin-nextcloud
+          key: ${{ env.SSH_PRIVATE_KEY }}
+          source: "nc-deploy-staging"
+          target: "/tmp/nc-deploy"
+          strip_components: 1 # strips "nc-deploy-staging/" so target gets opt/..., etc/...
+
+      - name: Apply files and start service on VM
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ steps.collect_deploy.outputs.publicStaticIp }}
+          username: vm-admin-nextcloud
+          key: ${{ env.SSH_PRIVATE_KEY }}
+          script: |
+            sudo mkdir -p /opt/nextcloud /opt/nextcloud/config/swag/config/dns-conf \
+              /opt/nextcloud/config/swag/config/nginx/proxy-confs /etc/keyvault /etc/systemd/system
+            # Incrementally merge staged files into their final destinations
+            sudo rsync -a /tmp/nc-deploy/ /
+            sudo rm -rf /tmp/nc-deploy
+            sudo chmod +x /opt/nextcloud/start.sh
+            sudo systemctl daemon-reload
+            sudo systemctl enable --now nextcloud.service
+            sudo systemctl status nextcloud.service --no-pager || true
+
+      - name: Configure user_oidc on Nextcloud
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          OIDC_CLIENT_ID: ${{ steps.create_app.outputs.appId }}
+          OIDC_CLIENT_SECRET: ${{ steps.create_secret.outputs.clientSecret }}
+          OIDC_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+        with:
+          host: ${{ steps.collect_deploy.outputs.publicStaticIp }}
+          username: vm-admin-nextcloud
+          key: ${{ env.SSH_PRIVATE_KEY }}
+          envs: OIDC_CLIENT_ID,OIDC_CLIENT_SECRET,OIDC_TENANT_ID
+          command_timeout: 15m
+          script: |
+            set -euo pipefail
+
+            # ── Wait for Nextcloud to finish initializing ────────────────────────
+            echo "Waiting for Nextcloud to be ready..."
+            max_tries=40
+            for i in $(seq 1 $max_tries); do
+              if docker exec --user www-data nextcloud php occ status 2>/dev/null | grep -q 'installed: true'; then
+                echo "Nextcloud ready after $i attempt(s)"
+                break
+              fi
+              if [ "$i" = "$max_tries" ]; then
+                echo "Nextcloud did not become ready after $((max_tries * 10))s" >&2
+                docker logs nextcloud --tail 50 >&2 || true
+                exit 1
+              fi
+              echo "Not ready yet ($i/$max_tries), retrying in 10s..."
+              sleep 10
+            done
+
+            # ── Install / enable user_oidc ───────────────────────────────────────
+            echo "Installing user_oidc app..."
+            docker exec --user www-data nextcloud php occ app:install user_oidc 2>/dev/null \
+              || docker exec --user www-data nextcloud php occ app:enable user_oidc
+
+            # ── Register (or update) the Azure AD OIDC provider ─────────────────
+            echo "Configuring user_oidc provider..."
+            DISCOVERY_URI="https://login.microsoftonline.com/${OIDC_TENANT_ID}/v2.0/.well-known/openid-configuration"
+            docker exec --user www-data nextcloud \
+              php occ user_oidc:provider "EntraID" \
+                --clientid="$OIDC_CLIENT_ID" \
+                --clientsecret="$OIDC_CLIENT_SECRET" \
+                --discoveryuri="$DISCOVERY_URI" \
+                --scope="openid email profile" \
+                --unique-uid=sub \
+                --auto-provision=1 \
+                --soft-auto-provision=1 \
+                --disable-account-creation=1 \
+                --bearer-validation=1
+
+            echo "user_oidc configured successfully"

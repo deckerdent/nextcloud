@@ -15,7 +15,7 @@ $repoRoot = (Resolve-Path -Path (Join-Path $ScriptDir '..') -ErrorAction Stop).P
 
 # Ensure proxy conf and local certs exist; generate if missing
 try {
-    $proxyConf = Join-Path $repoRoot 'deployment\config\swag\config\nginx\proxy-confs\nextcloud.subdomain.conf'
+    $proxyConf = Join-Path $repoRoot 'deployment\opt\nextcloud\config\swag\config\nginx\proxy-confs\nextcloud.subdomain.conf'
     if (-not (Test-Path $proxyConf)) {
         Write-Host "Proxy config not found: $proxyConf -- generating with script"
         $genProxy = Join-Path $ScriptDir 'scripts\local\generate-local-nextcloud-subdomain-conf.ps1'
@@ -30,7 +30,7 @@ try {
         }
     }
 
-    $certsDir = Join-Path $repoRoot 'deployment\config\swag\config\etc\letsencrypt\live\localhost'
+    $certsDir = Join-Path $repoRoot 'deployment\opt\nextcloud\config\swag\config\etc\letsencrypt\live\localhost'
     if (-not (Test-Path $certsDir)) {
         Write-Host "Local certs not found: $certsDir -- generating with script"
         $genCerts = Join-Path $ScriptDir 'scripts\local\generate-local-certs.ps1'
@@ -50,7 +50,7 @@ catch {
 }
 
 $EnvPath = Join-Path -Path $ScriptDir -ChildPath ".env.local"
-$ComposePath = Join-Path -Path $repoRoot -ChildPath "deployment\docker-compose.yml"
+$ComposePath = Join-Path -Path $repoRoot -ChildPath "deployment\opt\nextcloud\docker-compose.yml"
 
 $rs = ''
 
@@ -63,6 +63,9 @@ $secrets = @{
     "NEXTCLOUD_ADMIN_PASSWORD" = "nextcloud"
     "NEXTCLOUD_DB_PASSWORD"    = "nextcloud"
     "NEXTCLOUD_REDIS_PASSWORD" = "nextcloud"
+    "NEXTCLOUD_DB_USER"        = "nextcloud"
+    "NEXTCLOUD_ADMIN_USER"     = "nextcloud"
+    "NEXTCLOUD_REDIS_USER"     = "nextcloud"
 }
 
 try {

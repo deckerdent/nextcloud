@@ -1,0 +1,16 @@
+[Unit]
+Description=Nextcloud Docker Compose startup
+After=network-online.target docker.service
+Wants=docker.service network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/nextcloud
+ExecStart=/bin/bash /opt/nextcloud/start.sh
+RemainAfterExit=yes
+TimeoutStartSec=3000
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

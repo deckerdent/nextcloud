@@ -26,13 +26,13 @@ services:
       - 443:443
     restart: unless-stopped
 
-  # 2. Nextcloud Application (PHP-FPM)
+  # 2. Nextcloud Application (Apache)
   app:
     image: nextcloud:apache
     container_name: nextcloud
     restart: unless-stopped
     expose:
-      - "9000"
+      - "80"
     logging:
       driver: "json-file"
       options:
@@ -54,12 +54,13 @@ services:
       - NEXTCLOUD_TRUSTED_DOMAINS=${NEXTCLOUD_TRUSTED_DOMAINS}
       - TRUSTED_PROXIES=${NEXTCLOUD_TRUSTED_PROXIES}
       - OVERWRITEPROTOCOL=${NEXTCLOUD_OVERWRITEPROTOCOL}
-      - OVERWRITECLIURL=https://${PRIMARY_DOMAIN}
+      - OVERWRITEWEBROOT=${NEXTCLOUD_OVERWRITEWEBROOT}
+      - OVERWRITECLIURL=https://${PRIMARY_DOMAIN}/nextcloud
       - NEXTCLOUD_UPDATE=1
     volumes:
       # We ONLY persist the unique parts. Code stays in the image.
       - ./config/nextcloud/config:/var/www/html/config
-      - ./nextcloud-data:/var/www/html/data
+      - ../../var/lib/nextcloud/data:/var/www/html/data
       - ./config/nextcloud/custom_apps:/var/www/html/custom_apps
     depends_on:
       - db
@@ -82,7 +83,7 @@ services:
       - POSTGRES_USER=${NEXTCLOUD_DB_USER}
       - POSTGRES_PASSWORD=${NEXTCLOUD_DB_PASSWORD}
     volumes:
-      - ./db-data:/var/lib/postgresql/data
+      - ../../var/lib/nextcloud/db-data:/var/lib/postgresql/data
 
   # 4. Cache (Redis)
   redis:

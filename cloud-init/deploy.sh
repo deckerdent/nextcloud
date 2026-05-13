@@ -179,7 +179,7 @@ if [[ "$TEST" -eq 1 ]]; then
 else
 		echo "Executing: az deployment create -- invoking Azure CLI (output suppressed as it contains secrets)"
 		# run create and directly query the deployment resource for the fields we need
-		deploy_json=$("${AZ_CMD[@]}" --query "{deploymentId:id,resourceGroupId:properties.outputs.resourceGroupId.value,publicStaticIp:properties.outputs.publicStaticIp.value}" -o json 2>/dev/null)
+		deploy_json=$("${AZ_CMD[@]}" --query "{deploymentId:id,resourceGroupId:properties.outputs.resourceGroupId.value,publicStaticIp:properties.outputs.publicStaticIp.value,keyVaultName:properties.outputs.keyVaultName.value,keyVaultId:properties.outputs.keyVaultId.value}" -o json 2>/dev/null)
 
 		if [[ -z "$deploy_json" ]]; then
 			echo "Deployment command returned no JSON output" >&2
@@ -190,9 +190,11 @@ else
 		deployment_id=$(printf '%s' "$deploy_json" | sed -n 's/.*"deploymentId"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
 		rg_id=$(printf '%s' "$deploy_json" | sed -n 's/.*"resourceGroupId"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
 		public_ip=$(printf '%s' "$deploy_json" | sed -n 's/.*"publicStaticIp"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+		kv_name=$(printf '%s' "$deploy_json" | sed -n 's/.*"keyVaultName"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+		kv_id=$(printf '%s' "$deploy_json" | sed -n 's/.*"keyVaultId"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
 
 		# build JSON and emit base64 on stdout (human readable lines go to stderr)
-		json=$(printf '{"deploymentId":"%s","resourceGroupId":"%s","publicStaticIp":"%s"}' "$deployment_id" "$rg_id" "$public_ip")
+		json=$(printf '{"deploymentId":"%s","resourceGroupId":"%s","publicStaticIp":"%s","keyVaultName":"%s","keyVaultId":"%s"}' "$deployment_id" "$rg_id" "$public_ip" "$kv_name" "$kv_id")
 		b64=$(printf '%s' "$json" | base64 -w0)
 		# print base64 JSON to stdout (caller will capture this)
 		printf '%s' "$b64"

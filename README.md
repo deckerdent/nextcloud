@@ -1,6 +1,6 @@
 # Nextcloud Azure 
 
-With this **Nextcloud Azure** Repo setting up nextcloud on Azure becomes a no-brainer. It's highly opinionated and sets up nextcloud in a very specific way that depicts a standard nextcloud hosting. The costs for the hosting depend on some variables, such as disk and vm size you choose, but leaving everything at default will give you a fully working nextcloud setup at roughly **35€ max.** per month.
+With this **Nextcloud Azure** Repo setting up nextcloud on Azure becomes a no-brainer. It's highly opinionated and sets up nextcloud in a very specific way that depicts a standard nextcloud hosting. The costs for the hosting depend on some variables, such as disk and vm size you choose, but leaving everything at default will give you a fully working nextcloud setup at roughly **40€ max.** per month.
 
 The setup includes: 
 
@@ -98,5 +98,5 @@ Note: Currently scripts run only after the first installation, so no possibility
 Azure VM: B2pls (24€)
 Managed Disk: E10 Standard SSD WITHOUT snapshots (9€)
 Azure DNS: Zone 1 (0.6€)
-
+Static IP: For internet access (2.3€)
 

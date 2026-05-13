@@ -141,3 +141,6 @@ resource kvUserRoleAssignmentNextcloud 'Microsoft.Authorization/roleAssignments@
     roleDefinitionId: kvUserRoleDefinitionId.id
   }
 }
+
+output keyVaultName string = kvnextcloud.name
+output keyVaultId string = kvnextcloud.id

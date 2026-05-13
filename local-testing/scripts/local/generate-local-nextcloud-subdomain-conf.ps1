@@ -60,7 +60,7 @@ function Copy-ProxyTemplate {
 # Main
 try {
     $TemplateRelativePath = 'templates/nextcloud.subdomain.conf'
-    $DestRelativePath = 'deployment/config/swag/config/nginx/proxy-confs/nextcloud.subdomain.conf'
+    $DestRelativePath = 'deployment/opt/nextcloud/config/swag/config/nginx/proxy-confs/nextcloud.subdomain.conf'
     Debug-Log "TemplateRelativePath: $TemplateRelativePath"
     Debug-Log "DestRelativePath: $DestRelativePath"
 

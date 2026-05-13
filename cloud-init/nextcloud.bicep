@@ -71,6 +71,9 @@ module kv './modules/kv.bicep' = {
   }
 }
 
+output keyVaultName string = kv.outputs.keyVaultName
+output keyVaultId string = kv.outputs.keyVaultId
+
 module dns './modules/dns.bicep' = {
   name: 'dnsNextcloud'
   scope: rgnextcloud
