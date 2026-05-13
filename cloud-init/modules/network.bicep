@@ -70,23 +70,6 @@ resource nsgNextcloud 'Microsoft.Network/networkSecurityGroups@2025-05-01' = {
         }
       }
       {
-        name: 'Allow-SMTP-Inbound'
-        properties: {
-          access: 'Allow'
-          direction: 'Inbound'
-          priority: 300
-          protocol: 'Tcp'
-          sourceAddressPrefix: '*'
-          sourcePortRange: '*'
-          destinationAddressPrefix: '*'
-          destinationPortRanges: [
-            '25'
-            '587'
-            '465'
-          ]
-        }
-      }
-      {
         name: 'Allow-SMTP-Outbound'
         properties: {
           access: 'Allow'
@@ -104,18 +87,29 @@ resource nsgNextcloud 'Microsoft.Network/networkSecurityGroups@2025-05-01' = {
         }
       }
       {
-        name: 'Allow-IMAP-Inbound'
+        name: 'Allow-IMAP-Outbound'
         properties: {
           access: 'Allow'
-          direction: 'Inbound'
+          direction: 'Outbound'
           priority: 302
           protocol: 'Tcp'
           sourceAddressPrefix: '*'
           sourcePortRange: '*'
           destinationAddressPrefix: '*'
-          destinationPortRanges: [
-            '993'
-          ]
+          destinationPortRange: '993'
+        }
+      }
+      {
+        name: 'Deny-All-Outbound'
+        properties: {
+          access: 'Deny'
+          direction: 'Outbound'
+          priority: 4096
+          protocol: '*'
+          sourceAddressPrefix: '*'
+          sourcePortRange: '*'
+          destinationAddressPrefix: '*'
+          destinationPortRange: '*'
         }
       }
     ]

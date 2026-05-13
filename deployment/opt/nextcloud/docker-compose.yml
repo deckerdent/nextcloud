@@ -57,6 +57,7 @@ services:
       - OVERWRITEWEBROOT=${NEXTCLOUD_OVERWRITEWEBROOT}
       - OVERWRITECLIURL=https://${PRIMARY_DOMAIN}/nextcloud
       - NEXTCLOUD_UPDATE=1
+      - NEXTCLOUD_INIT_HTACCESS=true
     volumes:
       # We ONLY persist the unique parts. Code stays in the image.
       - ./config/nextcloud/config:/var/www/html/config
@@ -65,6 +66,12 @@ services:
     depends_on:
       - db
       - redis
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/status.php"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
 
   # 3. Database (PostgreSQL)
   db:

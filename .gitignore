@@ -16,6 +16,11 @@
 
 # SWAG generated certs (never commit private keys)
 /deployment/config/swag/config/etc/
+deployment/opt/nextcloud/config/swag/config/etc/letsencrypt/
+
+# Local testing — secrets and generated files
+local-testing/.env.local
+local-testing/.env*.local
 
 # Nextcloud data volume
 /deployment/nextcloud-data/*

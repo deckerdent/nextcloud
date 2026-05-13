@@ -187,6 +187,7 @@ jobs:
           echo "keyVaultId=$keyVaultId" >> $GITHUB_OUTPUT
 
       - name: Verify DNS and VM connectivity
+        id: verify_dns
         run: |
           set -euo pipefail
           rgId="${{ steps.collect_deploy.outputs.rgId }}"
@@ -200,6 +201,10 @@ jobs:
           # get nameservers (first one)
           ns_list=$(az network dns zone show --resource-group "$rg_name" --name "$domain" --query "nameServers" -o tsv)
           echo "Azure DNS nameservers: $ns_list"
+          # Store as newline-safe output for use in the summary step
+          echo "nameservers<<EOF" >> $GITHUB_OUTPUT
+          printf '%s\n' "$ns_list" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
           ns1=$(printf '%s' "$ns_list" | head -n1)
           echo "Querying nameserver $ns1 for www.$domain"
           nslookup "www.$domain" "$ns1" || echo "nslookup failed"
@@ -332,16 +337,84 @@ jobs:
             # ── Register (or update) the Azure AD OIDC provider ─────────────────
             echo "Configuring user_oidc provider..."
             DISCOVERY_URI="https://login.microsoftonline.com/${OIDC_TENANT_ID}/v2.0/.well-known/openid-configuration"
+
+            # Register or update the provider (per-provider settings only)
             docker exec --user www-data nextcloud \
               php occ user_oidc:provider "EntraID" \
                 --clientid="$OIDC_CLIENT_ID" \
                 --clientsecret="$OIDC_CLIENT_SECRET" \
                 --discoveryuri="$DISCOVERY_URI" \
                 --scope="openid email profile" \
-                --unique-uid=sub \
-                --auto-provision=1 \
-                --soft-auto-provision=1 \
-                --disable-account-creation=1 \
-                --bearer-validation=1
+                --unique-uid=1
+
+            # Global user_oidc system config (these live in config.php, not per-provider)
+            # auto_provision=true + soft_auto_provision=true + disable_account_creation=true:
+            # → user_oidc updates user info from the IdP but does NOT create new accounts
+            docker exec --user www-data nextcloud php occ config:system:set user_oidc auto_provision --value=true --type=boolean
+            docker exec --user www-data nextcloud php occ config:system:set user_oidc soft_auto_provision --value=true --type=boolean
+            docker exec --user www-data nextcloud php occ config:system:set user_oidc disable_account_creation --value=true --type=boolean
+            # userinfo_bearer_validation: validate API bearer tokens against the userinfo endpoint
+            docker exec --user www-data nextcloud php occ config:system:set user_oidc userinfo_bearer_validation --value=true --type=boolean
 
             echo "user_oidc configured successfully"
+
+      - name: Deployment summary
+        if: always()
+        run: |
+          domain="${{ github.event.inputs.domainName }}"
+          rgId="${{ steps.collect_deploy.outputs.rgId }}"
+          kvName="${{ steps.collect_deploy.outputs.keyVaultName }}"
+          staticIp="${{ steps.collect_deploy.outputs.publicStaticIp }}"
+          nameservers="${{ steps.verify_dns.outputs.nameservers }}"
+
+          cat >> "$GITHUB_STEP_SUMMARY" << EOF
+          ## Deployment complete
+
+          **Resource group:** \`${rgId}\`
+          **Static IP:** \`${staticIp}\`
+          **Key Vault:** \`${kvName}\`
+          **Domain:** \`${domain}\`
+
+          ---
+
+          ### Key Vault access
+          > **Your user account does not have the _Key Vault Secrets User_ role yet.**
+          > Only the VM's managed identity can read secrets right now.
+          > To grant yourself access, go to **Key Vault → Access control (IAM)** in the Azure Portal
+          > and assign yourself the _Key Vault Secrets User_ role on \`${kvName}\`.
+
+          ---
+
+          ### DNS configuration
+          Your Azure DNS zone for \`${domain}\` has been created and an A record pointing to \`${staticIp}\` has been provisioned by the Bicep deployment.
+
+          The only remaining step is to **delegate to Azure DNS** at your domain registrar:
+          In your registrar's control panel, replace the current NS records for \`${domain}\` with these four Azure nameservers:
+
+          \`\`\`
+          ${nameservers}
+          \`\`\`
+
+          Once the NS records propagate (minutes to hours depending on your registrar), SWAG will automatically
+          obtain a Let's Encrypt certificate via the Azure DNS challenge plugin on next startup.
+
+          ---
+
+          ### First login
+          Nextcloud is protected by Entra ID but **does not auto-provision accounts**.
+
+          1. SSH into the VM and retrieve the admin credentials from Key Vault \`${kvName}\`,
+             secrets \`nextcloud-admin-username\` and \`nextcloud-admin-password\`.
+          2. Log in at \`https://${domain}/nextcloud\` with those credentials.
+          3. Create a Nextcloud user for yourself (same username as your Entra UPN is recommended).
+          4. Log out, then use the **Login with Microsoft** button — your Entra identity will be
+             linked to the account you just created.
+
+          > **Other users:** create their Nextcloud account first, then have them log in via Microsoft.
+          > They must exist in your Entra tenant.
+          >
+          > If you want to allow **guest users or personal Microsoft accounts** without managing them
+          > in your tenant, change the discovery URI in Nextcloud's _OpenID Connect_ admin settings
+          > from \`${OIDC_TENANT_ID}\` to \`common\`.
+          > You will still need to manually create each user in Nextcloud before their first login.
+          EOF
