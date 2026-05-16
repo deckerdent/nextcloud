@@ -20,7 +20,6 @@ mounts:
 package_update: true
 packages:
   - docker.io
-  - azure-cli
 
 write_files:
   - path: /etc/systemd/system/nextcloud.service
@@ -35,6 +34,14 @@ write_files:
 
 # Configure the system environment
 runcmd:
+  # Install Azure CLI from Microsoft's package repository
+  - curl -sL https://aka.ms/InstallAzureCLIDeb | bash
+
+  # Install Docker Compose V2 plugin
+  - mkdir -p /usr/local/lib/docker/cli-plugins
+  - curl -SL https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64 -o /usr/local/lib/docker/cli-plugins/docker-compose
+  - chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+
   # Ensure the docker group exists and the default user is added
   - usermod -aG docker vm-admin-nextcloud
 

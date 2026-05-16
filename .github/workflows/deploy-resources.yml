@@ -314,7 +314,7 @@ jobs:
 
             # ── Wait for Nextcloud to finish initializing ────────────────────────
             echo "Waiting for Nextcloud to be ready..."
-            max_tries=40
+            max_tries=100
             for i in $(seq 1 $max_tries); do
               if docker exec --user www-data nextcloud php occ status 2>/dev/null | grep -q 'installed: true'; then
                 echo "Nextcloud ready after $i attempt(s)"

@@ -22,6 +22,7 @@ services:
       - STAGING=${SWAG_STAGING:-false}
     volumes:
       - ./config/swag/config/:/config
+      - ./config/swag/custom-cont-init.d/:/custom-cont-init.d/
     ports:
       - 443:443
     restart: unless-stopped
